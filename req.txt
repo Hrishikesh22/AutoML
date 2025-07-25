@@ -1,0 +1,13 @@
+h2o==3.44.0.3
+pandas==1.5.3
+numpy==1.23.5
+pyarrow>=8.0
+scikit-learn==1.7.0
+optuna>=3.0
+matplotlib>=3.5
+seaborn>=0.11
+tqdm>=4.64
+xgboost==1.7.5
+hyperopt>=0.2.7
+scikit-optimize==0.10.2
+pytorch-tabnet==4.1.0
