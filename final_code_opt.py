@@ -160,13 +160,13 @@ def fit_and_evaluate_model_manual(X_train, X_test, y_train, y_test, dataset_mode
         pd.DataFrame(y_pred, columns=["prediction"]).to_csv(f"{model_name}_predictions.csv", index=False)
         print_log(f"{model_name} predictions saved to file.", log_file)
 
-
-        if is_regression:
-            r2 = r2_score(y_test, y_pred)
-            print_log(f"{model_name} R² Score (manual): {r2:.4f}", log_file)
-        else:
-            acc = accuracy_score(y_test, y_pred)
-            print_log(f"{model_name} Accuracy (manual): {acc:.4f}", log_file)
+        if y_test is not None:
+            if is_regression:
+                r2 = r2_score(y_test, y_pred)
+                print_log(f"{model_name} R² Score (manual): {r2:.4f}", log_file)
+            else:
+                acc = accuracy_score(y_test, y_pred)
+                print_log(f"{model_name} Accuracy (manual): {acc:.4f}", log_file)
 
         print_log(f"Cross-validating {model_name} (manual)...", log_file)
         start_time = time.time()
@@ -211,13 +211,13 @@ def fit_and_evaluate_model_manual(X_train, X_test, y_train, y_test, dataset_mode
             y_pred = best_model.predict(X_test)
             pd.DataFrame(y_pred, columns=["prediction"]).to_csv(f"{model_name}_predictions.csv", index=False)
             print_log(f"{model_name} predictions saved to file.", log_file)
-
-            if is_regression:
-                r2 = r2_score(y_test, y_pred)
-                print_log(f"{model_name} R² Score (manual retrained): {r2:.4f}", log_file)
-            else:
-                acc = accuracy_score(y_test, y_pred)
-                print_log(f"{model_name} Accuracy (manual retrained): {acc:.4f}", log_file)
+            if y_test is not None:
+                if is_regression:
+                    r2 = r2_score(y_test, y_pred)
+                    print_log(f"{model_name} R² Score (manual retrained): {r2:.4f}", log_file)
+                else:
+                    acc = accuracy_score(y_test, y_pred)
+                    print_log(f"{model_name} Accuracy (manual retrained): {acc:.4f}", log_file)
 
         else:
             print_log(f"No param grid defined for {model_name}, skipping GridSearchCV.", log_file)
@@ -385,13 +385,14 @@ def fit_and_evaluate_model_hyperopt(X_train, X_test, y_train, y_test, dataset_mo
         best_model = model_cls(**best_params)
         print_log(f"Training {model_name} with best hyperparameters on full training data...", log_file)
         start_train = time.time()
-        if "XGB" in model_name:
-            best_model.fit(X_train, y_train,
-                      eval_set=[(X_test, y_test)],
-                      early_stopping_rounds=10,
-                      verbose=False)
-        else:
-            best_model.fit(X_train, y_train)
+        if y_test is not None:
+            if "XGB" in model_name:
+                best_model.fit(X_train, y_train,
+                          eval_set=[(X_test, y_test)],
+                          early_stopping_rounds=10,
+                          verbose=False)
+            else:
+                best_model.fit(X_train, y_train)
 
         train_duration = time.time() - start_train
         training_time[model_name] += train_duration
@@ -399,27 +400,27 @@ def fit_and_evaluate_model_hyperopt(X_train, X_test, y_train, y_test, dataset_mo
 
         # Predict on test set
         y_pred = best_model.predict(X_test)
-        if is_regression:
-            score = r2_score(y_test, y_pred)
-            print_log(f"{model_name} Test R² Score: {score:.4f}\n", log_file)
+        if y_test is not None:
+            if is_regression:
+                score = r2_score(y_test, y_pred)
+                print_log(f"{model_name} Test R² Score: {score:.4f}\n", log_file)
             
-            if dataset_model_scores is not None:
-                if model_name not in dataset_model_scores:
-                        dataset_model_scores[model_name] = {'scores': [], 'params': []}
-                        dataset_model_scores[model_name]['scores'].append(score)
-                        dataset_model_scores[model_name]['params'].append(best_params)
+                if dataset_model_scores is not None:
+                    if model_name not in dataset_model_scores:
+                            dataset_model_scores[model_name] = {'scores': [], 'params': []}
+                            dataset_model_scores[model_name]['scores'].append(score)
+                            dataset_model_scores[model_name]['params'].append(best_params)
             
-        else:
-            score = accuracy_score(y_test, y_pred)
-            print_log(f"{model_name} Test Accuracy: {score:.4f}\n", log_file)
+            else:
+                score = accuracy_score(y_test, y_pred)
+                print_log(f"{model_name} Test Accuracy: {score:.4f}\n", log_file)
 
-            if dataset_model_scores is not None:
-                if model_name not in dataset_model_scores:
-                        dataset_model_scores[model_name] = {'scores': [], 'params': []}
-                        dataset_model_scores[model_name]['scores'].append(score)
-                        dataset_model_scores[model_name]['params'].append(best_params)
+                if dataset_model_scores is not None:
+                    if model_name not in dataset_model_scores:
+                            dataset_model_scores[model_name] = {'scores': [], 'params': []}
+                            dataset_model_scores[model_name]['scores'].append(score)
+                            dataset_model_scores[model_name]['params'].append(best_params)
             
-
     return training_time
 
 def get_hyperopt_space(model_name):
@@ -591,47 +592,47 @@ def fit_and_evaluate_model_gpbo(X_train, X_test, y_train, y_test, acq_func, data
         print_log(f"Training time for best {model_name}: {train_time:.2f} seconds", log_file)
 
         y_pred = best_model.predict(X_test)
-        if is_regression:
-            score = r2_score(y_test, y_pred)
-            print_log(f"{model_name} Test R² Score (acq={best_acq_func}): {score:.4f}\n", log_file)
+        if y_test is not None:
+            if is_regression:
+                score = r2_score(y_test, y_pred)
+                print_log(f"{model_name} Test R² Score (acq={best_acq_func}): {score:.4f}\n", log_file)
         
-            #for acq_func in ["EI", "PI", "LCB"]:
-            for acq_func in ["EI"]:
-                best_params, best_score = gp_bo_model(
-                model_cls, model_name, X_train, y_train, 
-                is_regression=is_regression, n_calls=10,
-                acq_func=acq_func, log_file=log_file)
+                for acq_func in ["EI", "PI", "LCB"]:
+                    best_params, best_score = gp_bo_model(
+                    model_cls, model_name, X_train, y_train, 
+                    is_regression=is_regression, n_calls=10,
+                    acq_func=acq_func, log_file=log_file)
 
-            if dataset_model_scores is not None:
-                print("Storing scores for dataset and model...")
-                if model_name not in dataset_model_scores:
-                    #print values of scores, params, acq_funcs
-                    print(f"Initializing scores for {model_name} in dataset_model_scores")
-                    print(f"Best score: {best_score}, Best params: {best_params}, Best acq_func: {best_acq_func}")
-                    dataset_model_scores[model_name] = {'scores': [], 'params': [], 'acq_funcs': []}
-                    dataset_model_scores[model_name]['scores'].append(best_score)
-                    dataset_model_scores[model_name]['params'].append(best_params)                    
-                    dataset_model_scores[model_name]['acq_funcs'].append(best_acq_func)
-        else:
-            score = accuracy_score(y_test, y_pred)
-            print_log(f"{model_name} Test Accuracy (acq={best_acq_func}): {score:.4f}\n", log_file)
+                if dataset_model_scores is not None:
+                    print("Storing scores for dataset and model...")
+                    if model_name not in dataset_model_scores:
+                        #print values of scores, params, acq_funcs
+                        print(f"Initializing scores for {model_name} in dataset_model_scores")
+                        print(f"Best score: {best_score}, Best params: {best_params}, Best acq_func: {best_acq_func}")
+                        dataset_model_scores[model_name] = {'scores': [], 'params': [], 'acq_funcs': []}
+                        dataset_model_scores[model_name]['scores'].append(best_score)
+                        dataset_model_scores[model_name]['params'].append(best_params)                    
+                        dataset_model_scores[model_name]['acq_funcs'].append(best_acq_func)
+            else:
+                score = accuracy_score(y_test, y_pred)
+                print_log(f"{model_name} Test Accuracy (acq={best_acq_func}): {score:.4f}\n", log_file)
 
-            for acq_func in ["EI"]:
-                best_params, best_score = gp_bo_model(
-                model_cls, model_name, X_train, y_train, 
-                is_regression=is_regression, n_calls=10,
-                acq_func=acq_func, log_file=log_file)
+                for acq_func in ["EI", "PI", "LCB"]:
+                    best_params, best_score = gp_bo_model(
+                    model_cls, model_name, X_train, y_train, 
+                    is_regression=is_regression, n_calls=10,
+                    acq_func=acq_func, log_file=log_file)
 
-            if dataset_model_scores is not None:
-                print("Storing scores for dataset and model...")
-                if model_name not in dataset_model_scores:
-                    #print values of scores, params, acq_funcs
-                    print(f"Initializing scores for {model_name} in dataset_model_scores")
-                    print(f"Best score: {best_score}, Best params: {best_params}, Best acq_func: {best_acq_func}")
-                    dataset_model_scores[model_name] = {'scores': [], 'params': [], 'acq_funcs': []}
-                    dataset_model_scores[model_name]['scores'].append(best_score)
-                    dataset_model_scores[model_name]['params'].append(best_params)                    
-                    dataset_model_scores[model_name]['acq_funcs'].append(best_acq_func)
+                if dataset_model_scores is not None:
+                    print("Storing scores for dataset and model...")
+                    if model_name not in dataset_model_scores:
+                        #print values of scores, params, acq_funcs
+                        print(f"Initializing scores for {model_name} in dataset_model_scores")
+                        print(f"Best score: {best_score}, Best params: {best_params}, Best acq_func: {best_acq_func}")
+                        dataset_model_scores[model_name] = {'scores': [], 'params': [], 'acq_funcs': []}
+                        dataset_model_scores[model_name]['scores'].append(best_score)
+                        dataset_model_scores[model_name]['params'].append(best_params)                    
+                        dataset_model_scores[model_name]['acq_funcs'].append(best_acq_func)
 
     return training_time
     
@@ -768,25 +769,26 @@ def fit_and_evaluate_model_tuned(X_train, X_test, y_train, y_test, dataset_model
 
         # Evaluate on test data
         y_pred = best_model.predict(X_test)
-        if is_regression:
-            score = r2_score(y_test, y_pred)
-            print_log(f"{model_name} Test R² Score: {score:.4f}\n", log_file)
+        if y_test is not None:
+            if is_regression:
+                score = r2_score(y_test, y_pred)
+                print_log(f"{model_name} Test R² Score: {score:.4f}\n", log_file)
             
-            if dataset_model_scores is not None:
-                if model_name not in dataset_model_scores:
-                        dataset_model_scores[model_name] = {'scores': [], 'params': []}
-                        dataset_model_scores[model_name]['scores'].append(score)
-                        dataset_model_scores[model_name]['params'].append(best_params)
+                if dataset_model_scores is not None:
+                    if model_name not in dataset_model_scores:
+                            dataset_model_scores[model_name] = {'scores': [], 'params': []}
+                            dataset_model_scores[model_name]['scores'].append(score)
+                            dataset_model_scores[model_name]['params'].append(best_params)
             
-        else:
-            score = accuracy_score(y_test, y_pred)
-            print_log(f"{model_name} Test Accuracy: {score:.4f}\n", log_file)
+            else:
+                score = accuracy_score(y_test, y_pred)
+                print_log(f"{model_name} Test Accuracy: {score:.4f}\n", log_file)
 
-            if dataset_model_scores is not None:
-                if model_name not in dataset_model_scores:
-                        dataset_model_scores[model_name] = {'scores': [], 'params': []}
-                        dataset_model_scores[model_name]['scores'].append(score)
-                        dataset_model_scores[model_name]['params'].append(best_params)
+                if dataset_model_scores is not None:
+                    if model_name not in dataset_model_scores:
+                            dataset_model_scores[model_name] = {'scores': [], 'params': []}
+                            dataset_model_scores[model_name]['scores'].append(score)
+                            dataset_model_scores[model_name]['params'].append(best_params)
 
 def explore_parquet_folder(folder_path, log_file=None, training_time=None, optimization="manual", dataset_model_scores=None):
     folder = Path(folder_path)
@@ -794,7 +796,8 @@ def explore_parquet_folder(folder_path, log_file=None, training_time=None, optim
         X_train = pd.read_parquet(folder / 'X_train.parquet')
         X_test = pd.read_parquet(folder / 'X_test.parquet')
         y_train = pd.read_parquet(folder / 'y_train.parquet')
-        y_test = pd.read_parquet(folder / 'y_test.parquet')
+        y_test_path = folder / 'y_test.parquet'
+        y_test = pd.read_parquet(y_test_path) if y_test_path.exists() else None
     except Exception as e:
         print_log(f"Error loading files in {folder}: {e}", log_file)
         return
@@ -842,8 +845,7 @@ def explore_parquet_folder(folder_path, log_file=None, training_time=None, optim
     elif optimization == "hyperopt":
         fit_and_evaluate_model_hyperopt(X_train, X_test, y_train_enc, y_test_enc, dataset_model_scores, log_file=log_file, training_time=training_time)
     elif optimization == "GPBO":
-        #for acq_fn in ["EI", "LCB", "PI"]:
-        for acq_fn in ["EI"]:
+        for acq_fn in ["EI", "LCB", "PI"]:
             print_log(f"=== Running GP-BO with acq_fun {acq_fn} ->", log_file)
             fit_and_evaluate_model_gpbo(X_train, X_test, y_train_enc, y_test_enc, dataset_model_scores, acq_func=acq_fn,  log_file=log_file, training_time=training_time)
     else:
@@ -865,9 +867,6 @@ def explore_all_datasets(base_dir, log_file=None, optimization="manual"):
         if dataset_type.is_dir():
             dataset_count += 1
             print_log(f"\nDataset Type: {dataset_type.name}", log_file)
-            if dataset_type.name in ["bike_sharing_demand", "brazilian_houses", "superconductivity", "yprop_4_1"]:
-                print("skipping dataset:", dataset_type.name)
-                continue
             for fold in sorted(dataset_type.iterdir(), key=lambda x: int(x.name)):
                 fold_scores = []
                 fold_params = []
